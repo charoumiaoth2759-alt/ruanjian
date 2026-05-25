@@ -627,6 +627,17 @@ class CabinetDesignView(QWidget):
             )
         return mgr.submit_add_left_panel(payload, source=source)
 
+    def submit_add_right_panel_interaction(
+        self,
+        payload: Any | None = None,
+        *,
+        source: CabinetInteractionSource,
+    ) -> CommandResult:
+        mgr = self._cabinet_interaction_mgr
+        if mgr is None:
+            return CommandResult(False, {"error": "cabinet_interaction_manager_missing"}, [])
+        return mgr.submit_add_right_panel(payload, source=source)
+
     def set_interaction_mode(self, mode: InteractionMode) -> None:
         """
         切换交互模式并同步主 3D / 参数空间 ``ToolMode``（如参数空间专用加板工具）。

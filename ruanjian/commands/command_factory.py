@@ -16,7 +16,11 @@ from commands.cabinet_edit_command import (
     CabinetEditEnvironment,
     DispatchCabinetEditCommand,
 )
-from core.panel.cabinet_space_panel_cmd import build_left_side_panel
+from core.constants.enums import PanelRole
+from core.panel.cabinet_space_panel_cmd import (
+    build_left_side_panel,
+    build_right_side_panel,
+)
 from core.space.space_models import Space
 
 
@@ -51,7 +55,7 @@ class CommandFactory:
 
     @staticmethod
     def create_add_panel_command(
-        ctx: dict[str, Any], payload: Any | None = None
+        ctx: dict[str, Any], payload: Any | None = None, role: PanelRole = PanelRole.LEFT_SIDE
     ) -> AddBoardCommand:
         """
         添加左侧板：解析目标空间 → ``build_left_side_panel`` → ``AddBoardCommand(space, panel, ctx)``。
@@ -61,7 +65,10 @@ class CommandFactory:
         space = resolve_attachment_space(ctx)
         if space is None:
             raise ValueError("no target space for add panel")
-        panel = build_left_side_panel(space, thickness=_thickness_mm(payload))
+        if role == PanelRole.RIGHT_SIDE:
+            panel = build_right_side_panel(space, thickness=_thickness_mm(payload))
+        else:
+            panel = build_left_side_panel(space, thickness=_thickness_mm(payload))
         return AddBoardCommand(space, panel, ctx)
 
     @staticmethod

@@ -17,10 +17,13 @@ from commands.command_result import CommandResult
 from core.events.event_bus import publish as bus_publish
 from core.events.event_types import BuiltinEventTopics, Event
 from core.panel.cabinet_space_panel_cmd import (
+    detach_right_side_panel,
     detach_left_side_panel,
+    mount_right_side_panel,
     mount_left_side_panel,
 )
 from core.panel.panel_models import Panel
+from core.constants.enums import PanelRole
 from core.space.space_models import Space
 
 from .base_command import BaseCommand
@@ -89,7 +92,10 @@ class AddBoardCommand(BaseCommand):
             )
 
             if not _panel_mounted_on_space(panel, space):
-                mount_left_side_panel(space, panel)
+                if panel.role == PanelRole.RIGHT_SIDE:
+                    mount_right_side_panel(space, panel)
+                else:
+                    mount_left_side_panel(space, panel)
             reset_cabinet_ops_visual_to_locked_after_left_panel_added(space)
             run_attach_solver_and_publish(self._ctx, space)
             _publish_solve_completed_incremental_add(panel)
@@ -108,7 +114,10 @@ class AddBoardCommand(BaseCommand):
     def undo(self) -> None:
         if self._panel is None or self._space is None:
             return
-        detach_left_side_panel(self._panel, self._space)
+        if self._panel.role == PanelRole.RIGHT_SIDE:
+            detach_right_side_panel(self._panel, self._space)
+        else:
+            detach_left_side_panel(self._panel, self._space)
         run_attach_solver_and_publish(self._ctx, self._space)
         _publish_solve_completed_incremental_remove(self._panel.id)
 

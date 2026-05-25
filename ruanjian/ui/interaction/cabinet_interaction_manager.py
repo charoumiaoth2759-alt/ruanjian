@@ -1,9 +1,44 @@
-# -*- coding: utf-8 -*-
-"""
-CabinetInteractionManager — 统一加板编辑链路（唯一交互侧入口）。
-
-链路::
-
+from typing import Any
+
+from commands.command_factory import CommandFactory
+from commands.command_result import CommandResult
+from core.constants.enums import PanelRole
+class CabinetInteractionManager:
+    def submit_add_left_panel(
+        return cmd.last_result or CommandResult(
+            False,
+            {"error": "command failed"},
+            [],
+        )
+
+    def submit_add_right_panel(
+        self,
+        payload: Any | None = None,
+        *,
+        source: CabinetInteractionSource,
+    ) -> CommandResult:
+        host = self._host
+        dispatcher = getattr(host, "_cmd_dispatcher", None)
+        stack = getattr(host, "_cabinet_undo_stack", None)
+        if dispatcher is None:
+            return CommandResult(False, {"error": "no dispatcher"}, [])
+        if stack is None:
+            return CommandResult(False, {"error": "cabinet_undo_pipeline_inactive"}, [])
+
+        ctx = dispatcher.context
+        if cabinet_command_should_respect_ops_lock("add_right_panel") and ctx_cabinet_ops_locked(ctx):
+            return CommandResult(False, {"error": CABINET_OPS_LOCKED_HINT}, [])
+
+        self._apply_interaction_mode_step(source)
+        try:
+            cmd = CommandFactory.create_add_panel_command(ctx, payload, role=PanelRole.RIGHT_SIDE)
+        except (ValueError, RuntimeError) as e:
+            return CommandResult(False, {"error": str(e)}, [])
+        log_command("AddBoardCommand")
+        if stack.push(cmd):
+            return cmd.last_result or CommandResult(True, {}, [])
+        return cmd.last_result or CommandResult(False, {"error": "command failed"}, [])
+
     UI / Shortcut / Hover
     → InteractionMode（``[MODE]``）
     → CommandFactory
