@@ -452,31 +452,36 @@ class View3D(QOpenGLWidget if _HAS_OPENGL else QWidget):
         *,
         payload: dict | None,
         source: CabinetInteractionSource,
-    ) -> None:
+    ) -> bool:
         """主 3D：宿主 ``submit_add_left_panel_interaction``（统一编辑链路）。"""
         cdv = resolve_cabinet_design_view(self)
         if cdv is None:
-            return
+            return False
         pl: dict = payload if payload is not None else {}
         try:
             fn = getattr(cdv, "submit_add_left_panel_interaction", None)
             if not callable(fn):
-                return
+                return False
             res = fn(pl, source=source)
             if getattr(res, "success", False):
                 self._clear_left_panel_hover_ghost_after_success()
+                return True
         except Exception:
-            pass
+            return False
+        return False
 
     def _shortcut_submit_add_left_panel(self) -> None:
         """QShortcut「Z, Space」：经 ``CabinetInteractionManager`` 提交加左侧板。"""
         if self._cabinet_space is None:
             return
         self.setFocus(Qt.FocusReason.ShortcutFocusReason)
-        self._submit_main_3d_add_left_panel_interaction(
+        ok = self._submit_main_3d_add_left_panel_interaction(
             payload={},
             source=CabinetInteractionSource.MAIN_3D_SHORTCUT,
         )
+        # 快捷键加板后回到选择态：后续普通单击空间盒可按 OCCUPIED→ALLOWED 规则解锁。
+        if ok and self.current_tool == ToolMode.ADD_LEFT_PANEL:
+            self.set_tool_mode(ToolMode.SELECT)
 
     def _sync_cabinet_space_placement_ui_metadata(self) -> None:
         """
