@@ -83,6 +83,8 @@ if _HAS_PG:
                         return
                 tc = h._tool_context()
                 if h.current_tool.on_mouse_press(event, self, tc):
+                    if h.tool_mode == ToolMode.ADD_LEFT_PANEL:
+                        h._refresh_space_box_colors()
                     self.update()
                     event.accept()
                     return
