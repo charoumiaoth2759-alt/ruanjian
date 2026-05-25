@@ -111,33 +111,6 @@ class CabinetInteractionManager:
 
 __all__ = ["CabinetInteractionManager"]
 
-            if callable(fn):
-                fn(InteractionMode.ADD_PANEL)
-                return
-        log_mode("ADD_PANEL")
-
-    def submit_add_left_panel(
-        self,
-        payload: Any | None = None,
-        *,
-        source: CabinetInteractionSource,
-    ) -> CommandResult:
-        """
-        唯一交互侧「添加左侧板」入口。
-
-        InteractionMode → CommandFactory.create_add_panel_command
-        → UndoStack.push → AddBoardCommand.execute → 增量 Scene。
-        """
-        host = self._host
-        dispatcher = getattr(host, "_cmd_dispatcher", None)
-        stack = getattr(host, "_cabinet_undo_stack", None)
-        if dispatcher is None:
-            return CommandResult(False, {"error": "no dispatcher"}, [])
-        if stack is None:
-            return CommandResult(
-                False,
-                {"error": "cabinet_undo_pipeline_inactive"},
-                [],
             )
 
         ctx = dispatcher.context
