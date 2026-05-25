@@ -30,6 +30,7 @@ from ui.interaction import CabinetInteractionSource
 from .scene_manager import SceneManager
 from .tool_modes import ToolMode
 from .tools.add_left_panel_tool import AddLeftPanelTool
+from .tools.add_right_panel_tool import AddRightPanelTool
 from .tools.base_tool import BaseTool, NullTool
 
 try:
@@ -57,7 +58,7 @@ if _HAS_PG:
             if h._root is not None:
                 tc = h._tool_context()
                 consumed = h.current_tool.on_mouse_move(event, self, tc)
-                if h.tool_mode == ToolMode.ADD_LEFT_PANEL:
+                if h.tool_mode in (ToolMode.ADD_LEFT_PANEL, ToolMode.ADD_RIGHT_PANEL):
                     h._refresh_space_box_colors()
                     self.update()
                 if consumed:
@@ -83,7 +84,7 @@ if _HAS_PG:
                         return
                 tc = h._tool_context()
                 if h.current_tool.on_mouse_press(event, self, tc):
-                    if h.tool_mode == ToolMode.ADD_LEFT_PANEL:
+                    if h.tool_mode in (ToolMode.ADD_LEFT_PANEL, ToolMode.ADD_RIGHT_PANEL):
                         h._refresh_space_box_colors()
                     self.update()
                     event.accept()
@@ -118,6 +119,7 @@ class ParamSpaceGLView(QWidget):
         self.tool_mode: ToolMode = ToolMode.SELECT
         self._null_tool = NullTool()
         self._add_left_panel_tool = AddLeftPanelTool()
+        self._add_right_panel_tool = AddRightPanelTool()
         self.current_tool: BaseTool = self._null_tool
         self._command_dispatcher: Any = None
 
@@ -234,6 +236,23 @@ class ParamSpaceGLView(QWidget):
                 pass
 
         ctx["submit_add_left_panel_payload_fn"] = _submit_add_left
+
+        def _submit_add_right(payload: dict[str, Any]) -> None:
+            cdv = resolve_cabinet_design_view(self)
+            if cdv is None:
+                return
+            try:
+                cctx = ctx.get("cabinet_lock_ctx")
+                if isinstance(cctx, dict) and ctx_cabinet_ops_locked(cctx):
+                    return
+                fn = getattr(cdv, "run_cabinet_dispatch_command", None)
+                if not callable(fn):
+                    return
+                fn("add_right_panel", payload, cabinet_interaction_source=CabinetInteractionSource.PARAM_SPACE_TOOL)
+            except Exception:
+                pass
+
+        ctx["submit_add_right_panel_payload_fn"] = _submit_add_right
         return ctx
 
     def _sync_space_placement_ui_metadata(self) -> None:
@@ -258,6 +277,8 @@ class ParamSpaceGLView(QWidget):
         self._sync_space_placement_ui_metadata()
         hovered: set[str] = set()
         if self.tool_mode == ToolMode.ADD_LEFT_PANEL and self._add_left_panel_tool.hover_left:
+            hovered.add(self._root.id)
+        if self.tool_mode == ToolMode.ADD_RIGHT_PANEL and self._add_right_panel_tool.hover_right:
             hovered.add(self._root.id)
         self._scene.refresh_space_box_styles(hovered_space_ids=hovered)
         self._gl.update()
@@ -290,6 +311,7 @@ class ParamSpaceGLView(QWidget):
         """绑定根空间并刷新 GL 与尺寸文案。"""
         if self._gl is not None:
             self._add_left_panel_tool.reset(self._gl)
+            self._add_right_panel_tool.reset(self._gl)
         self._root = space
         w, h, d = space.width, space.height, space.depth
         self._dim_lbl.setText(
@@ -362,6 +384,7 @@ class ParamSpaceGLView(QWidget):
             return
         if self._scene is not None and self._gl is not None:
             self._add_left_panel_tool.reset(self._gl)
+            self._add_right_panel_tool.reset(self._gl)
             self._scene.clear()
             self._sync_space_placement_ui_metadata()
             self._scene.add_space(self._root)
@@ -378,6 +401,7 @@ class ParamSpaceGLView(QWidget):
             self._scene.clear()
         if self._gl is not None:
             self._add_left_panel_tool.reset(self._gl)
+            self._add_right_panel_tool.reset(self._gl)
         self._root = None
         self._dim_lbl.setText("")
 
@@ -390,15 +414,21 @@ class ParamSpaceGLView(QWidget):
         prev = self.tool_mode
         self.tool_mode = mode
 
-        if prev == ToolMode.ADD_LEFT_PANEL and mode != ToolMode.ADD_LEFT_PANEL:
+        if prev in (ToolMode.ADD_LEFT_PANEL, ToolMode.ADD_RIGHT_PANEL) and mode not in (ToolMode.ADD_LEFT_PANEL, ToolMode.ADD_RIGHT_PANEL):
             if self._gl is not None:
                 self._add_left_panel_tool.reset(self._gl)
+                self._add_right_panel_tool.reset(self._gl)
         elif mode == ToolMode.ADD_LEFT_PANEL and prev != ToolMode.ADD_LEFT_PANEL:
             if self._gl is not None:
                 self._add_left_panel_tool.reset(self._gl)
+        elif mode == ToolMode.ADD_RIGHT_PANEL and prev != ToolMode.ADD_RIGHT_PANEL:
+            if self._gl is not None:
+                self._add_right_panel_tool.reset(self._gl)
 
         if mode == ToolMode.ADD_LEFT_PANEL:
             self.current_tool = self._add_left_panel_tool
+        elif mode == ToolMode.ADD_RIGHT_PANEL:
+            self.current_tool = self._add_right_panel_tool
         else:
             self.current_tool = self._null_tool
 

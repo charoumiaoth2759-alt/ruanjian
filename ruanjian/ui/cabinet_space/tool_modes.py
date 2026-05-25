@@ -11,6 +11,7 @@ class ToolMode(Enum):
 
     SELECT = "select"
     ADD_LEFT_PANEL = "add_left_panel"
+    ADD_RIGHT_PANEL = "add_right_panel"
 
 
 __all__ = ["ToolMode"]
