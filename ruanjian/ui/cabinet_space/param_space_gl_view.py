@@ -245,10 +245,10 @@ class ParamSpaceGLView(QWidget):
                 cctx = ctx.get("cabinet_lock_ctx")
                 if isinstance(cctx, dict) and ctx_cabinet_ops_locked(cctx):
                     return
-                fn = getattr(cdv, "run_cabinet_dispatch_command", None)
+                fn = getattr(cdv, "submit_add_right_panel_interaction", None)
                 if not callable(fn):
                     return
-                fn("add_right_panel", payload, cabinet_interaction_source=CabinetInteractionSource.PARAM_SPACE_TOOL)
+                fn(payload, source=CabinetInteractionSource.PARAM_SPACE_TOOL)
             except Exception:
                 pass
 

@@ -88,6 +88,14 @@ def handle_add_left_panel(ctx: dict[str, Any], payload: Any = None) -> CommandRe
 
 
 def add_right_panel(ctx: dict[str, Any], payload: Any = None) -> CommandResult:
+    mgr = ctx.get("cabinet_interaction_manager")
+    if mgr is not None:
+        from ui.interaction.cabinet_interaction_sources import CabinetInteractionSource
+
+        return mgr.submit_add_right_panel(
+            payload,
+            source=CabinetInteractionSource.INTERNAL_LEGACY_DISPATCH,
+        )
     return _invoke("add_right_panel", _pcmd.add_right_panel, ctx, payload)
 
 

@@ -90,6 +90,64 @@ def mount_left_side_panel(space: Space, panel: Panel) -> None:
         raise RuntimeError("左侧面占用登记失败（内部状态不一致）。")
 
 
+def build_right_side_panel(space: Space, thickness: float = 18.0) -> Panel:
+    """构造一块右侧板实例（算尺、落位、校验），**尚未**写入 ``panel_groups`` / 面占用。"""
+    t = max(6.0, min(float(thickness), 80.0))
+    panel = Panel(
+        name="右侧板",
+        role=PanelRole.RIGHT_SIDE,
+        placement_mode=PlacementMode.ANCHOR_FIXED,
+        anchor_type=AnchorType.RIGHT,
+    )
+    calculate_left_side_panel(panel, space, thickness=t)
+    fm = get_face_occupancy_manager()
+    if not fm.can_place(space.id, SpaceFace.RIGHT, panel):
+        raise RuntimeError("该空间右侧面已占用板件，无法重复添加右侧板。")
+    panel.space_id = space.id
+    panel.set_position(
+        x=float(space.x) + float(space.width) - t,
+        y=float(space.y),
+        z=float(space.z),
+    )
+    if not _fit_engine.validate(space, panel):
+        raise RuntimeError("板件超出当前空间盒子尺寸，无法添加右侧板。")
+    return panel
+
+
+def mount_right_side_panel(space: Space, panel: Panel) -> None:
+    """将 ``build_right_side_panel`` 产出的 ``Panel`` 挂入 ``space.panel_groups`` 并登记面占用。"""
+    fm = get_face_occupancy_manager()
+    if not hasattr(space, "panel_groups") or space.panel_groups is None:
+        space.panel_groups = []
+    for g in space.panel_groups:
+        pls = getattr(g, "panels", None) or []
+        if panel in pls:
+            return
+    group = PanelGroup(space_id=space.id)
+    group.add(panel)
+    space.panel_groups.append(group)
+    if not fm.occupy(space.id, SpaceFace.RIGHT, panel):
+        group.panels.remove(panel)
+        space.panel_groups.remove(group)
+        raise RuntimeError("右侧面占用登记失败（内部状态不一致）。")
+
+
+def detach_right_side_panel(panel: Panel, space: Space) -> None:
+    """从 ``space`` 上卸下右侧板并释放右侧面占用。"""
+    fm = get_face_occupancy_manager()
+    fm.release_for_panel(panel)
+    if not hasattr(space, "panel_groups") or space.panel_groups is None:
+        return
+    groups = space.panel_groups
+    for g in list(groups):
+        pls = getattr(g, "panels", None) or []
+        if panel in pls:
+            pls.remove(panel)
+            if len(pls) == 0 and g in groups:
+                groups.remove(g)
+            break
+
+
 def add_left_side_panel(space: Space, thickness: float = 18.0) -> Panel:
     """
     给 Space 添加左侧板（构建 + 挂载一步完成）。
