@@ -56,12 +56,31 @@ def _is_left_side_panel(board: Any) -> bool:
     return getattr(r, "value", None) == PanelRole.LEFT_SIDE.value
 
 
+def _is_right_side_panel(board: Any) -> bool:
+    from ..constants.enums import PanelRole
+
+    r = getattr(board, "role", None)
+    if r == PanelRole.RIGHT_SIDE:
+        return True
+    return getattr(r, "value", None) == PanelRole.RIGHT_SIDE.value
+
+
 def _slot_left_face_only_left_side_stack(slot: FaceOccupancy) -> bool:
     """左面槽内若仅有 ``LEFT_SIDE`` 叠板，则仍允许再叠一块。"""
     if slot.is_free():
         return True
     for b in slot.boards:
         if not _is_left_side_panel(b):
+            return False
+    return True
+
+
+def _slot_right_face_only_right_side_stack(slot: FaceOccupancy) -> bool:
+    """右面槽内若仅有 ``RIGHT_SIDE`` 叠板，则仍允许再叠一块。"""
+    if slot.is_free():
+        return True
+    for b in slot.boards:
+        if not _is_right_side_panel(b):
             return False
     return True
 
@@ -116,6 +135,8 @@ class FaceOccupancyManager:
         slot = self._slot(space_id, face)
         if face == SpaceFace.LEFT and _is_left_side_panel(board):
             return slot.is_free() or _slot_left_face_only_left_side_stack(slot)
+        if face == SpaceFace.RIGHT and _is_right_side_panel(board):
+            return slot.is_free() or _slot_right_face_only_right_side_stack(slot)
         return slot.is_free()
 
     def occupy(self, space_id: str, face: SpaceFace, board: Any) -> bool:
@@ -168,6 +189,8 @@ class FaceOccupancyManager:
             return False
         if face == SpaceFace.LEFT:
             return not _slot_left_face_only_left_side_stack(slot)
+        if face == SpaceFace.RIGHT:
+            return not _slot_right_face_only_right_side_stack(slot)
         return True
 
     def reset(self) -> None:
@@ -199,6 +222,17 @@ class FaceOccupancyManager:
         psid = str(getattr(panel, "space_id", None) or fallback_space_id)
         slot = self._slot(psid, face)
         if face == SpaceFace.LEFT and _is_left_side_panel(panel):
+            if panel in slot.boards:
+                return
+            slot.occupy(panel)
+            setattr(panel, "bound_space_face", face)
+            md = getattr(panel, "metadata", None)
+            if not isinstance(md, dict):
+                md = {}
+                setattr(panel, "metadata", md)
+            md["space_face"] = face.name
+            return
+        if face == SpaceFace.RIGHT and _is_right_side_panel(panel):
             if panel in slot.boards:
                 return
             slot.occupy(panel)
